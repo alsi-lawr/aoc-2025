@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "aoc-one"
+name = "part-one"
 version = "0.1.0"
