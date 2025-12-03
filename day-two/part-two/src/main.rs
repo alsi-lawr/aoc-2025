@@ -50,9 +50,9 @@ const fn gen_factors<const N: usize>(d: usize) -> [u32; N] {
     let mut i: u32 = 1;
     while i * i <= d as u32 {
         if d.is_multiple_of(i as usize) {
-            factors[i as usize] = i;
+            factors[i as usize] = 1;
             if i * i != d as u32 {
-                factors[(d as u32 / i) as usize] = i;
+                factors[(d as u32 / i) as usize] = 1;
             }
         }
         i += 1;
@@ -60,13 +60,13 @@ const fn gen_factors<const N: usize>(d: usize) -> [u32; N] {
     factors
 }
 
-const fn gen_multiples() -> [[u64; 12]; 12] {
-    let mut multiples: [[u64; 12]; 12] = [[0; 12]; 12];
+const fn gen_multiples<const N: usize>() -> [[u64; N]; N] {
+    let mut multiples: [[u64; N]; N] = [[0; N]; N];
     let mut i: usize = 0;
-    while i < 12 {
-        let factors: [u32; 12] = gen_factors::<12>(i);
+    while i < N {
+        let factors: [u32; N] = gen_factors::<N>(i);
         let mut j: usize = 0;
-        while j < 12 {
+        while j < N {
             if factors[j] == 0 {
                 j += 1;
                 continue;
@@ -79,7 +79,7 @@ const fn gen_multiples() -> [[u64; 12]; 12] {
     multiples
 }
 
-const MULTIPLES: [[u64; 12]; 12] = gen_multiples();
+const MULTIPLES: [[u64; 12]; 12] = gen_multiples::<12>();
 
 fn list_factors(number: u32) -> Vec<u32> {
     let mut factors: Vec<u32> = Vec::new();
