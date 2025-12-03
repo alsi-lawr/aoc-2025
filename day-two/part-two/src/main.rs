@@ -27,6 +27,7 @@ What do you get if you add up all of the invalid IDs using these new rules?
 
 mod products;
 use products::{ProductInfo, ProductParsingError};
+use rayon::prelude::*;
 use std::{
     env,
     error::Error,
@@ -115,15 +116,11 @@ fn is_invalid_id(id: u64) -> bool {
 }
 
 fn calculate_invalid_id_sum(products: Vec<ProductInfo>) -> u64 {
-    let mut invalid_ids: Vec<u64> = Vec::new();
-    for product in products {
-        for id in product.lower_id..product.upper_id {
-            if is_invalid_id(id) {
-                invalid_ids.push(id);
-            }
-        }
-    }
-    invalid_ids.iter().sum::<u64>()
+    products
+        .par_iter()
+        .flat_map(|p| p.lower_id..p.upper_id)
+        .filter(|id| is_invalid_id(*id))
+        .sum::<u64>()
 }
 
 fn read_file(file_path: &str) -> Result<Vec<ProductInfo>, Box<dyn Error>> {
