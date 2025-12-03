@@ -69,21 +69,23 @@ fn is_invalid_id(id: u64) -> bool {
         if factor == num_digits {
             continue;
         }
-        let mut possible_repeats: Vec<u64> = Vec::new();
 
         let base = 10u64.pow(num_digits - factor);
         let min_base = 10u64.pow(factor);
         let mut cur_base = base;
         let mut cur_id = id;
+        let first_digit = cur_id / cur_base;
+        let mut found_repeat = true;
         while cur_base >= 1 {
             let digit = cur_id / cur_base;
-            possible_repeats.push(digit);
+            if digit != first_digit {
+                found_repeat = false;
+                break;
+            }
             cur_id %= cur_base;
             cur_base /= min_base;
         }
-        if let Some(first) = possible_repeats.first()
-            && possible_repeats.iter().all(|x| x == first)
-        {
+        if found_repeat {
             return true;
         }
     }
