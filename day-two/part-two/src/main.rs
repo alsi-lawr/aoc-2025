@@ -34,6 +34,53 @@ use std::{
     io::{BufRead, BufReader},
 };
 
+const fn gen_multiple(factor: u32, num_digits: u32) -> u64 {
+    let min_base = 10u64.pow(factor);
+    let mut multiple = 1;
+    let mut current_base = min_base;
+    while current_base < 10u64.pow(num_digits) {
+        multiple += current_base;
+        current_base *= min_base;
+    }
+    multiple
+}
+
+const fn gen_factors<const N: usize>(d: usize) -> [u32; N] {
+    let mut factors: [u32; N] = [0; N];
+    let mut i: u32 = 1;
+    while i * i <= d as u32 {
+        if d.is_multiple_of(i as usize) {
+            factors[i as usize] = i;
+            if i * i != d as u32 {
+                factors[(d as u32 / i) as usize] = i;
+            }
+        }
+        i += 1;
+    }
+    factors
+}
+
+const fn gen_multiples() -> [[u64; 12]; 12] {
+    let mut multiples: [[u64; 12]; 12] = [[0; 12]; 12];
+    let mut i: usize = 0;
+    while i < 12 {
+        let factors: [u32; 12] = gen_factors::<12>(i);
+        let mut j: usize = 0;
+        while j < 12 {
+            if factors[j] == 0 {
+                j += 1;
+                continue;
+            }
+            multiples[i][j] = gen_multiple(j as u32, i as u32);
+            j += 1;
+        }
+        i += 1;
+    }
+    multiples
+}
+
+const MULTIPLES: [[u64; 12]; 12] = gen_multiples();
+
 fn list_factors(number: u32) -> Vec<u32> {
     let mut factors: Vec<u32> = Vec::new();
     let mut i: u32 = 1;
@@ -58,23 +105,9 @@ fn is_invalid_id(id: u64) -> bool {
         if factor == num_digits {
             continue;
         }
-
-        let base = 10u64.pow(num_digits - factor);
         let min_base = 10u64.pow(factor);
-        let mut cur_base = base;
-        let mut cur_id = id;
-        let first_digit = cur_id / cur_base;
-        let mut found_repeat = true;
-        while cur_base >= 1 {
-            let digit = cur_id / cur_base;
-            if digit != first_digit {
-                found_repeat = false;
-                break;
-            }
-            cur_id %= cur_base;
-            cur_base /= min_base;
-        }
-        if found_repeat {
+        let expected = MULTIPLES[num_digits as usize][factor as usize] * (id % min_base);
+        if expected == id {
             return true;
         }
     }
