@@ -2,6 +2,7 @@ use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
+#[derive(Debug, Clone, Copy)]
 pub struct ProductInfo {
     pub lower_id: u64,
     pub upper_id: u64,
