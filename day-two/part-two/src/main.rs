@@ -111,41 +111,38 @@ fn sum_invalid_in_range(low: u64, high: u64) -> u64 {
     let min_d = num_digits(low);
     let max_d = num_digits(high.saturating_sub(1));
 
-    let digit_range = min_d..=max_d;
-    let mut vals: Vec<u64> = digit_range
-        .into_iter()
-        .map(|d| {
+    let mut vals: Vec<u64> = (min_d..=max_d)
+        .flat_map(|d| {
             let d_us = d as usize;
-            (
-                d_us,
-                ProductInfo {
-                    lower_id: low.max(POW10[d_us - 1]),
-                    upper_id: high.min(POW10[d_us]),
-                },
-            )
-        })
-        .flat_map(|(d_us, p)| {
-            FACTORS[d_us].iter().flat_map(move |&k| {
-                if k == 0 || k >= d_us {
-                    return Vec::<u64>::new();
-                }
-                let rep = REP[d_us][k];
+            let p = ProductInfo {
+                lower_id: low.max(POW10[d_us - 1]),
+                upper_id: high.min(POW10[d_us]),
+            };
+            FACTORS[d_us]
+                .iter()
+                .filter_map(move |&k| {
+                    if k == 0 || k >= d_us {
+                        return None;
+                    }
 
-                let mut chunk_lo = p.lower_id.div_ceil(rep);
-                let mut chunk_hi = (p.upper_id - 1) / rep;
+                    let rep = REP[d_us][k];
 
-                let k_lo = POW10[k - 1];
-                let k_hi = POW10[k] - 1;
+                    let mut chunk_lo = p.lower_id.div_ceil(rep);
+                    let mut chunk_hi = (p.upper_id - 1) / rep;
 
-                chunk_lo = chunk_lo.max(k_lo);
-                chunk_hi = chunk_hi.min(k_hi);
+                    let k_lo = POW10[k - 1];
+                    let k_hi = POW10[k] - 1;
 
-                if chunk_lo > chunk_hi {
-                    return Vec::<u64>::new();
-                }
+                    chunk_lo = chunk_lo.max(k_lo);
+                    chunk_hi = chunk_hi.min(k_hi);
 
-                (chunk_lo..=chunk_hi).map(|chunk| rep * chunk).collect()
-            })
+                    if chunk_lo > chunk_hi {
+                        return None;
+                    }
+
+                    Some((chunk_lo..=chunk_hi).map(move |chunk| rep * chunk))
+                })
+                .flatten()
         })
         .collect();
     vals.sort_unstable();
