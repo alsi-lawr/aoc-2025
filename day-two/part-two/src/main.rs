@@ -35,7 +35,7 @@ use std::{
     io::{BufRead, BufReader},
 };
 
-const fn gen_multiple(factor: u32, num_digits: u32) -> u64 {
+const fn calc_multiple(factor: u32, num_digits: u32) -> u64 {
     let min_base = 10u64.pow(factor);
     let mut multiple = 1;
     let mut current_base = min_base;
@@ -46,14 +46,14 @@ const fn gen_multiple(factor: u32, num_digits: u32) -> u64 {
     multiple
 }
 
-const fn gen_factors<const N: usize>(d: usize) -> [u32; N] {
+const fn calc_factors<const N: usize>(d: usize) -> [u32; N] {
     let mut factors: [u32; N] = [0; N];
     let mut i: u32 = 1;
     while i * i <= d as u32 {
         if d.is_multiple_of(i as usize) {
-            factors[i as usize] = 1;
+            factors[i as usize] = i;
             if i * i != d as u32 {
-                factors[(d as u32 / i) as usize] = 1;
+                factors[(d as u32 / i) as usize] = d as u32 / i;
             }
         }
         i += 1;
@@ -65,14 +65,14 @@ const fn gen_multiples<const N: usize>() -> [[u64; N]; N] {
     let mut multiples: [[u64; N]; N] = [[0; N]; N];
     let mut i: usize = 0;
     while i < N {
-        let factors: [u32; N] = gen_factors::<N>(i);
+        let factors: [u32; N] = calc_factors::<N>(i);
         let mut j: usize = 0;
         while j < N {
             if factors[j] == 0 {
                 j += 1;
                 continue;
             }
-            multiples[i][j] = gen_multiple(j as u32, i as u32);
+            multiples[i][j] = calc_multiple(j as u32, i as u32);
             j += 1;
         }
         i += 1;
@@ -80,34 +80,56 @@ const fn gen_multiples<const N: usize>() -> [[u64; N]; N] {
     multiples
 }
 
-const MULTIPLES: [[u64; 12]; 12] = gen_multiples::<12>();
-
-fn list_factors(number: u32) -> Vec<u32> {
-    let mut factors: Vec<u32> = Vec::new();
-    let mut i: u32 = 1;
-    while i * i <= number {
-        if number.is_multiple_of(i) {
-            factors.push(i);
-            if i * i != number {
-                factors.push(number / i);
-            }
-        }
+const fn gen_factors<const N: usize>() -> [[u32; N]; N] {
+    let mut factors: [[u32; N]; N] = [[0; N]; N];
+    let mut i: usize = 0;
+    while i < N {
+        factors[i] = calc_factors::<N>(i);
         i += 1;
     }
     factors
 }
+
+const fn calc_bases<const N: usize>(d: usize) -> [u64; N] {
+    let mut bases: [u64; N] = [0; N];
+    let mut i: u32 = 1;
+    while i * i <= d as u32 {
+        if d.is_multiple_of(i as usize) {
+            bases[i as usize] = 10u64.pow(i);
+            if i * i != d as u32 {
+                bases[(d as u32 / i) as usize] = 10u64.pow(d as u32 / i);
+            }
+        }
+        i += 1;
+    }
+    bases
+}
+const fn gen_bases<const N: usize>() -> [[u64; N]; N] {
+    let mut bases: [[u64; N]; N] = [[0; N]; N];
+    let mut i: usize = 0;
+    while i < N {
+        bases[i] = calc_bases::<N>(i);
+        i += 1;
+    }
+    bases
+}
+
+const FACTORS: [[u32; 12]; 12] = gen_factors::<12>();
+const BASES: [[u64; 12]; 12] = gen_bases::<12>();
+const MULTIPLES: [[u64; 12]; 12] = gen_multiples::<12>();
 
 fn is_invalid_id(id: u64) -> bool {
     let num_digits: u32 = id.checked_ilog10().unwrap_or(0) + 1;
     if num_digits == 1 {
         return false;
     }
-    for factor in list_factors(num_digits) {
-        if factor == num_digits {
+    let factors = FACTORS[num_digits as usize].iter().filter(|f| **f != 0);
+    for factor in factors {
+        if *factor == num_digits {
             continue;
         }
-        let min_base = 10u64.pow(factor);
-        let expected = MULTIPLES[num_digits as usize][factor as usize] * (id % min_base);
+        let expected = MULTIPLES[num_digits as usize][*factor as usize]
+            * (id % BASES[num_digits as usize][*factor as usize]);
         if expected == id {
             return true;
         }
