@@ -3,5 +3,11 @@ name = "aoc2pt2"
 version = "0.1.0"
 edition = "2024"
 
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+
 [dependencies]
 rayon = "1.11.0"

@@ -111,41 +111,39 @@ fn sum_invalid_in_range(low: u64, high: u64) -> u64 {
     let min_d = num_digits(low);
     let max_d = num_digits(high.saturating_sub(1));
 
-    let mut vals: Vec<u64> = (min_d..=max_d)
-        .flat_map(|d| {
-            let d_us = d as usize;
-            let p = ProductInfo {
-                lower_id: low.max(POW10[d_us - 1]),
-                upper_id: high.min(POW10[d_us]),
-            };
-            FACTORS[d_us]
-                .iter()
-                .filter_map(move |&k| {
-                    if k == 0 || k >= d_us {
-                        return None;
-                    }
+    let mut vals: Vec<u64> = Vec::<u64>::with_capacity(1000);
+    vals.extend((min_d..=max_d).flat_map(|d| {
+        let d_us = d as usize;
+        let p = ProductInfo {
+            lower_id: low.max(POW10[d_us - 1]),
+            upper_id: high.min(POW10[d_us]),
+        };
+        FACTORS[d_us]
+            .iter()
+            .filter_map(move |&k| {
+                if k == 0 || k >= d_us {
+                    return None;
+                }
 
-                    let rep = REP[d_us][k];
+                let rep = REP[d_us][k];
 
-                    let mut chunk_lo = p.lower_id.div_ceil(rep);
-                    let mut chunk_hi = (p.upper_id - 1) / rep;
+                let mut chunk_lo = p.lower_id.div_ceil(rep);
+                let mut chunk_hi = (p.upper_id - 1) / rep;
 
-                    let k_lo = POW10[k - 1];
-                    let k_hi = POW10[k] - 1;
+                let k_lo = POW10[k - 1];
+                let k_hi = POW10[k] - 1;
 
-                    chunk_lo = chunk_lo.max(k_lo);
-                    chunk_hi = chunk_hi.min(k_hi);
+                chunk_lo = chunk_lo.max(k_lo);
+                chunk_hi = chunk_hi.min(k_hi);
 
-                    if chunk_lo > chunk_hi {
-                        return None;
-                    }
+                if chunk_lo > chunk_hi {
+                    return None;
+                }
 
-                    Some((chunk_lo..=chunk_hi).map(move |chunk| rep * chunk))
-                })
-                .flatten()
-        })
-        .collect();
-    vals.sort_unstable();
+                Some((chunk_lo..=chunk_hi).map(move |chunk| rep * chunk))
+            })
+            .flatten()
+    }));
     vals.dedup();
     vals.into_iter().sum::<u64>()
 }
