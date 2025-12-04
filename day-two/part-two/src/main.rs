@@ -149,9 +149,8 @@ fn sum_invalid_in_range(low: u64, high: u64) -> u64 {
 }
 
 fn calculate_invalid_id_sum(products: Vec<ProductInfo>) -> u64 {
-    use rayon::prelude::*;
     products
-        .par_iter()
+        .iter()
         .map(|p| sum_invalid_in_range(p.lower_id, p.upper_id))
         .sum()
 }
