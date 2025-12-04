@@ -99,9 +99,9 @@ const fn gen_powers<const N: usize>() -> [u64; N] {
     bases
 }
 
-const FACTORS: [[usize; 12]; 12] = gen_factors::<12>();
-const POW10: [u64; 12] = gen_powers::<12>();
-const REP: [[u64; 12]; 12] = gen_multiples::<12>();
+const FACTORS: [[usize; 19]; 19] = gen_factors::<19>();
+const POW10: [u64; 19] = gen_powers::<19>();
+const REP: [[u64; 19]; 19] = gen_multiples::<19>();
 
 fn num_digits(n: u64) -> u32 {
     n.checked_ilog10().unwrap_or(0) + 1
