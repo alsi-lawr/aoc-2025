@@ -62,15 +62,15 @@ fn read_file(file_path: &str) -> Result<(Ranges, Ids), Box<dyn Error>> {
         .take_while(|l| !l.is_empty())
         .map(|l| {
             let mut range = l.split("-");
-            let lower: u64 = range.next().unwrap_or("0").parse()?;
-            let upper: u64 = range.next().unwrap_or("0").parse()?;
-            Ok::<(u64, u64), ParseIntError>((lower, upper))
+            let lower: Id = range.next().unwrap_or("0").parse()?;
+            let upper: Id = range.next().unwrap_or("0").parse()?;
+            Ok::<Range, ParseIntError>((lower, upper))
         })
-        .collect::<Result<Vec<(u64, u64)>, ParseIntError>>()
+        .collect::<Result<Ranges, ParseIntError>>()
         .map_err(Box::new)?;
     let ids = it
-        .map(|l| l.parse::<u64>())
-        .collect::<Result<Vec<u64>, ParseIntError>>()
+        .map(|l| l.parse::<Id>())
+        .collect::<Result<Ids, ParseIntError>>()
         .map_err(Box::new)?;
     Ok((ranges, ids))
 }
