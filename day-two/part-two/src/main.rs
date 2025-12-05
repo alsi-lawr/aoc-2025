@@ -29,7 +29,6 @@ mod products;
 use products::{ProductInfo, ProductParsingError};
 use std::{
     env,
-    error::Error,
     fs::File,
     io::{BufRead, BufReader},
 };
@@ -64,7 +63,7 @@ const fn gen_multiples<const N: usize>() -> [[u64; N]; N] {
     let mut multiples: [[u64; N]; N] = [[0; N]; N];
     let mut i: usize = 0;
     while i < N {
-        let factors: [usize; N] = calc_factors::<N>(i);
+        let factors: [usize; N] = calc_factors(i);
         let mut j: usize = 0;
         while j < N {
             if factors[j] == 0 {
@@ -83,7 +82,7 @@ const fn gen_factors<const N: usize>() -> [[usize; N]; N] {
     let mut factors: [[usize; N]; N] = [[0; N]; N];
     let mut i: usize = 0;
     while i < N {
-        factors[i] = calc_factors::<N>(i);
+        factors[i] = calc_factors(i);
         i += 1;
     }
     factors
@@ -103,6 +102,7 @@ const FACTORS: [[usize; 19]; 19] = gen_factors::<19>();
 const POW10: [u64; 19] = gen_powers::<19>();
 const REP: [[u64; 19]; 19] = gen_multiples::<19>();
 
+#[inline]
 fn num_digits(n: u64) -> u32 {
     n.checked_ilog10().unwrap_or(0) + 1
 }
@@ -120,8 +120,9 @@ fn sum_invalid_in_range(low: u64, high: u64) -> u64 {
         };
         FACTORS[d_us]
             .iter()
+            .filter(|&&f| f != 0)
             .filter_map(move |&k| {
-                if k == 0 || k >= d_us {
+                if k >= d_us {
                     return None;
                 }
 
@@ -155,24 +156,23 @@ fn calculate_invalid_id_sum(products: Vec<ProductInfo>) -> u64 {
         .sum()
 }
 
-fn read_file(file_path: &str) -> Result<Vec<ProductInfo>, Box<dyn Error>> {
+fn read_file(file_path: &str) -> Result<Vec<ProductInfo>, ProductParsingError> {
     let h_file = File::open(file_path)?;
     let mut reader = BufReader::new(h_file);
     let mut line = String::new();
     let bytes = reader.read_line(&mut line)?;
     if bytes == 0 {
-        return Err(Box::new(ProductParsingError::EmptyFile {
+        return Err(ProductParsingError::EmptyFile {
             raw: file_path.to_string(),
-        }));
+        });
     }
     line.split(',')
         .map(|p| p.parse::<ProductInfo>())
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|e: ProductParsingError| -> Box<dyn Error> { Box::new(e) })
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let path = env::args().nth(1).expect("usage: aoc2pt1 <input-file>");
+fn main() -> Result<(), ProductParsingError> {
+    let path = env::args().nth(1).expect("usage: aoc2pt2 <input-file>");
     let products: Vec<ProductInfo> = read_file(&path)?;
     let total = calculate_invalid_id_sum(products);
     println!("final = {total}");

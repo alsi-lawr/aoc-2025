@@ -1,6 +1,6 @@
-use std::error::Error;
-use std::fmt;
+use std::io;
 use std::str::FromStr;
+use thiserror::Error;
 
 #[derive(Debug, Clone, Copy)]
 pub struct ProductInfo {
@@ -8,30 +8,26 @@ pub struct ProductInfo {
     pub upper_id: u64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ProductParsingError {
+    #[error("Failed to parse file (raw: {raw})")]
+    IoError { raw: String },
+
+    #[error("Empty file (raw: {raw})")]
     EmptyFile { raw: String },
+
+    #[error("Empty product (raw: {raw})")]
     EmptyProduct { raw: String },
+
+    #[error("Invalid range (raw: {raw})")]
     InvalidRange { raw: String },
 }
 
-impl fmt::Display for ProductParsingError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ProductParsingError::EmptyFile { raw } => {
-                write!(f, "Empty file (raw: {:?})", raw)
-            }
-            ProductParsingError::EmptyProduct { raw } => {
-                write!(f, "Empty product (raw: {:?})", raw)
-            }
-            ProductParsingError::InvalidRange { raw } => {
-                write!(f, "Empty product (raw: {:?})", raw)
-            }
-        }
+impl From<io::Error> for ProductParsingError {
+    fn from(e: io::Error) -> Self {
+        ProductParsingError::IoError { raw: e.to_string() }
     }
 }
-
-impl Error for ProductParsingError {}
 
 impl FromStr for ProductInfo {
     type Err = ProductParsingError;
