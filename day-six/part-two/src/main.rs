@@ -39,109 +39,106 @@ pub enum Operation {
     Unknown,
 }
 
-type Problem = (Vec<i128>, Operation);
+type Problem = (Vec<u64>, Operation);
 
-fn to_cephalopod(mut split_nums: Vec<Vec<char>>) -> Vec<i128> {
-    let cols = split_nums
-        .iter()
-        .map(|inner| inner.len())
-        .max()
-        .unwrap_or(0);
-    split_nums
-        .iter_mut()
-        .for_each(|inner| inner.resize(cols, ' '));
-    let rows = split_nums.len();
-    let rotated = (0..cols)
-        .map(|c| {
-            (0..rows)
-                .map(|r| split_nums[r][cols - 1 - c])
-                .collect::<Vec<char>>()
-        })
-        .collect::<Vec<Vec<char>>>();
-
-    rotated
-        .iter()
-        .map(|inner| inner.iter().collect::<String>())
-        .map(|s| s.trim().parse::<i128>().unwrap_or(-1))
-        .filter(|n| *n != -1)
-        .collect::<Vec<i128>>()
-}
-
-fn calculate_answer_sum(problems: Vec<Problem>) -> i128 {
+fn calculate_answer_sum(problems: Vec<Problem>) -> u64 {
     problems.iter().fold(0, |acc, problem| {
         acc + match problem.1 {
-            Operation::Add => problem.0.iter().sum::<i128>(),
+            Operation::Add => problem.0.iter().sum::<u64>(),
             Operation::Multiply => problem.0.iter().product(),
             Operation::Unknown => 0,
         }
     })
 }
 
-fn make_problems(problem_inputs: &[Vec<Vec<char>>], operators: &[Operation]) -> Vec<Problem>
-where
-    Operation: Clone,
-{
-    let problem_count = operators.len();
-    let inputs_by_problem: Vec<Vec<Vec<char>>> = (0..problem_count)
-        .map(|c| {
-            problem_inputs
-                .iter()
-                .map(|v| v[c].clone())
-                .collect::<Vec<Vec<char>>>()
-        })
-        .collect();
-
-    inputs_by_problem
-        .into_iter()
-        .zip(operators.iter())
-        .map(|(inputs, op)| (to_cephalopod(inputs), *op))
+fn transpose<T: Clone>(v: &[Vec<T>]) -> Vec<Vec<T>> {
+    assert!(!v.is_empty());
+    let len = v[0].len();
+    let rows = v.len();
+    (0..len)
+        .map(|c| (0..rows).map(|r| v[r][c].clone()).collect::<Vec<T>>())
         .collect()
+}
+
+fn parse_segment(grid: &[Vec<char>], num_rows: usize, start: usize, end: usize) -> Vec<u64> {
+    (start..end)
+        .rev()
+        .map(|col| {
+            grid[col][0..num_rows]
+                .iter()
+                .collect::<String>()
+                .trim()
+                .parse::<u64>()
+                .unwrap()
+        })
+        .collect()
+}
+
+fn parse_op(op_row: &[char], start: usize, end: usize) -> Operation {
+    match op_row[start..end]
+        .iter()
+        .collect::<String>()
+        .as_str()
+        .trim()
+    {
+        "+" => Operation::Add,
+        "*" => Operation::Multiply,
+        _ => Operation::Unknown,
+    }
 }
 
 fn read_file(file_path: &str) -> Result<Vec<Problem>, Box<dyn Error>> {
     let h_file = File::open(file_path)?;
     let reader = BufReader::new(h_file);
-    let lines: Vec<String> = reader.lines().collect::<Result<Vec<_>, _>>()?;
-    let lines = lines
-        .iter()
-        .map(|l| l.chars().collect())
-        .collect::<Vec<Vec<char>>>();
-    let num_rows = 4;
-    let mut problem_inputs: Vec<Vec<Vec<char>>> = Vec::new();
-    for i in 0..num_rows {
-        let mut line_parsed: Vec<Vec<char>> = Vec::new();
-        let mut parsed: Vec<char> = Vec::new();
-        let other_indexes: Vec<usize> = (0..num_rows).filter(|j| *j != i).collect();
-        let chars = &lines[i];
-        for j in 0..chars.len() {
-            let c = chars[j];
-            let mut is_end = true;
-            for k in other_indexes.iter() {
-                if lines[*k][j] != ' ' {
-                    is_end = false;
-                }
-            }
-            if c == ' ' && is_end {
-                line_parsed.push(parsed);
-                parsed = Vec::new();
-            } else {
-                parsed.push(c);
-            }
-        }
-        line_parsed.push(parsed);
-        problem_inputs.push(line_parsed);
-    }
-    let operators = lines[num_rows]
-        .iter()
-        .map(|o| match *o {
-            '+' => Operation::Add,
-            '*' => Operation::Multiply,
-            _ => Operation::Unknown,
-        })
-        .filter(|o| *o != Operation::Unknown)
-        .collect::<Vec<_>>();
+    let lines: Vec<String> = reader
+        .lines()
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .filter(|l| !l.is_empty())
+        .collect();
 
-    Ok(make_problems(&problem_inputs, &operators))
+    let num_operands = lines.len() - 1;
+    let width = lines[0].len();
+
+    let grid: Vec<Vec<char>> = transpose(
+        &lines[0..num_operands]
+            .iter()
+            .map(|l| l.chars().collect())
+            .collect::<Vec<Vec<char>>>(),
+    );
+
+    let mut segments = Vec::new();
+    let mut in_seg = false;
+    let mut seg_start = 0usize;
+
+    for (col, grid_col) in grid.iter().enumerate().take(width) {
+        let all_space = (0..num_operands).all(|r| grid_col[r].is_whitespace());
+        let leaving_seg = in_seg && all_space;
+        let entering_seg = !in_seg && !all_space;
+        if leaving_seg {
+            in_seg = false;
+            segments.push((seg_start, col));
+        }
+        if entering_seg {
+            in_seg = true;
+            seg_start = col;
+        }
+    }
+
+    if in_seg {
+        segments.push((seg_start, width));
+    }
+
+    let operator_row = lines[num_operands].chars().collect::<Vec<char>>();
+    Ok(segments
+        .into_iter()
+        .map(|(start, end)| {
+            (
+                parse_segment(&grid, num_operands, start, end),
+                parse_op(&operator_row, start, end),
+            )
+        })
+        .collect())
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
