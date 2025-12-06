@@ -3,4 +3,4 @@ input.txt
 flamegraph.svg
 perf.data
 *.old
-
+*.log
