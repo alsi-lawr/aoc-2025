@@ -75,12 +75,7 @@ fn parse_segment(grid: &[Vec<char>], num_rows: usize, start: usize, end: usize) 
 }
 
 fn parse_op(op_row: &[char], start: usize, end: usize) -> Operation {
-    match op_row[start..end]
-        .iter()
-        .collect::<String>()
-        .as_str()
-        .trim()
-    {
+    match op_row[start..end].iter().collect::<String>().trim() {
         "+" => Operation::Add,
         "*" => Operation::Multiply,
         _ => Operation::Unknown,
