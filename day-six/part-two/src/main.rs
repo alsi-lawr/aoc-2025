@@ -39,50 +39,120 @@ pub enum Operation {
     Unknown,
 }
 
-type Problem = (Vec<u64>, Operation);
-
-fn calculate_answer_sum(problems: Vec<Problem>) -> u64 {
-    problems.iter().fold(0, |acc, problem| {
-        acc + match problem.1 {
-            Operation::Add => problem.0.iter().sum::<u64>(),
-            Operation::Multiply => problem.0.iter().product(),
-            Operation::Unknown => 0,
+impl Operation {
+    fn from_str(s: &str) -> Operation {
+        match s.trim() {
+            "+" => Operation::Add,
+            "*" => Operation::Multiply,
+            _ => Operation::Unknown,
         }
-    })
+    }
+
+    fn parse_from_line(op_line: &[char], start: usize, end: usize) -> Operation {
+        Operation::from_str(&op_line[start..end].iter().collect::<String>())
+    }
 }
 
-fn transpose<T: Clone>(v: &[Vec<T>]) -> Vec<Vec<T>> {
-    assert!(!v.is_empty());
-    let len = v[0].len();
-    let rows = v.len();
-    (0..len)
-        .map(|c| (0..rows).map(|r| v[r][c].clone()).collect::<Vec<T>>())
-        .collect()
+struct Operand(u64);
+struct Operands(Vec<Operand>);
+struct Problem(Operands, Operation);
+struct Problems(Vec<Problem>);
+struct Matrix2D<T: Clone>(Vec<Vec<T>>);
+
+impl<T: std::fmt::Debug + Clone + PartialEq> Matrix2D<T> {
+    fn transpose(&self) -> Matrix2D<T> {
+        assert!(!self.0.is_empty());
+        let len = self.0[0].len();
+        let rows = self.0.len();
+        Matrix2D::<T>(
+            (0..len)
+                .map(|c| (0..rows).map(|r| self.0[r][c].clone()).collect::<Vec<T>>())
+                .collect(),
+        )
+    }
+
+    fn from_strings(s: &[String]) -> Matrix2D<char> {
+        let num_operands = s.len() - 1;
+        Matrix2D::<char>(
+            s[0..=num_operands]
+                .iter()
+                .map(|l| l.chars().collect())
+                .collect::<Vec<Vec<char>>>(),
+        )
+    }
+
+    fn take_width(
+        &self,
+        width: usize,
+    ) -> std::iter::Take<std::iter::Enumerate<std::slice::Iter<'_, std::vec::Vec<T>>>> {
+        self.0.iter().enumerate().take(width)
+    }
+
+    fn take_column_slice(&self, column: usize, rows: usize) -> &[T] {
+        &self.0[column][0..rows]
+    }
+
+    fn column_contains_only(&self, column: usize, c: T) -> bool {
+        self.take_column_slice(column, self.0[0].len())
+            .iter()
+            .all(|v| *v == c)
+    }
 }
 
-fn parse_segment(grid: &[Vec<char>], num_rows: usize, start: usize, end: usize) -> Vec<u64> {
-    (start..end)
-        .rev()
-        .map(|col| {
-            grid[col][0..num_rows]
+impl Operand {
+    fn parse_from_grid(grid: &Matrix2D<char>, num_rows: usize, col: usize) -> Operand {
+        Operand(
+            grid.take_column_slice(col, num_rows)
                 .iter()
                 .collect::<String>()
                 .trim()
                 .parse::<u64>()
-                .unwrap()
-        })
-        .collect()
-}
-
-fn parse_op(op_row: &[char], start: usize, end: usize) -> Operation {
-    match op_row[start..end].iter().collect::<String>().trim() {
-        "+" => Operation::Add,
-        "*" => Operation::Multiply,
-        _ => Operation::Unknown,
+                .unwrap(),
+        )
     }
 }
 
-fn read_file(file_path: &str) -> Result<Vec<Problem>, Box<dyn Error>> {
+impl Operands {
+    fn parse_from_grid(
+        grid: &Matrix2D<char>,
+        num_rows: usize,
+        start: usize,
+        end: usize,
+    ) -> Operands {
+        Operands(
+            (start..end)
+                .rev()
+                .map(|col| Operand::parse_from_grid(grid, num_rows, col))
+                .collect(),
+        )
+    }
+
+    fn sum(&self) -> u64 {
+        self.0.iter().map(|o| o.0).sum::<u64>()
+    }
+
+    fn product(&self) -> u64 {
+        self.0.iter().map(|o| o.0).product()
+    }
+}
+
+impl Problem {
+    fn answer(&self) -> u64 {
+        match self.1 {
+            Operation::Add => self.0.sum(),
+            Operation::Multiply => self.0.product(),
+            Operation::Unknown => 0,
+        }
+    }
+}
+
+impl Problems {
+    fn sum(&self) -> u64 {
+        self.0.iter().map(|p| p.answer()).sum()
+    }
+}
+
+fn read_file(file_path: &str) -> Result<Problems, Box<dyn Error>> {
     let h_file = File::open(file_path)?;
     let reader = BufReader::new(h_file);
     let lines: Vec<String> = reader
@@ -95,19 +165,14 @@ fn read_file(file_path: &str) -> Result<Vec<Problem>, Box<dyn Error>> {
     let num_operands = lines.len() - 1;
     let width = lines[0].len();
 
-    let grid: Vec<Vec<char>> = transpose(
-        &lines[0..num_operands]
-            .iter()
-            .map(|l| l.chars().collect())
-            .collect::<Vec<Vec<char>>>(),
-    );
+    let grid: Matrix2D<char> = Matrix2D::<char>::from_strings(&lines[0..num_operands]).transpose();
 
     let mut segments = Vec::new();
     let mut in_seg = false;
     let mut seg_start = 0usize;
 
-    for (col, grid_col) in grid.iter().enumerate().take(width) {
-        let all_space = (0..num_operands).all(|r| grid_col[r].is_whitespace());
+    for (col, _) in grid.take_width(width) {
+        let all_space = grid.column_contains_only(col, ' ');
         let leaving_seg = in_seg && all_space;
         let entering_seg = !in_seg && !all_space;
         if leaving_seg {
@@ -125,21 +190,23 @@ fn read_file(file_path: &str) -> Result<Vec<Problem>, Box<dyn Error>> {
     }
 
     let operator_row = lines[num_operands].chars().collect::<Vec<char>>();
-    Ok(segments
-        .into_iter()
-        .map(|(start, end)| {
-            (
-                parse_segment(&grid, num_operands, start, end),
-                parse_op(&operator_row, start, end),
-            )
-        })
-        .collect())
+    Ok(Problems(
+        segments
+            .into_iter()
+            .map(|(start, end)| {
+                Problem(
+                    Operands::parse_from_grid(&grid, num_operands, start, end),
+                    Operation::parse_from_line(&operator_row, start, end),
+                )
+            })
+            .collect(),
+    ))
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let path = env::args().nth(1).expect("usage: aoc6pt2 <input-file>");
-    let problems: Vec<Problem> = read_file(&path)?;
-    let total = calculate_answer_sum(problems);
+    let problems: Problems = read_file(&path)?;
+    let total = problems.sum();
     println!("final = {total}");
     Ok(())
 }
